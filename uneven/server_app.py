@@ -7,7 +7,6 @@ from flwr.server.strategy import FedAvg
 from uneven.task import UNet, get_weights
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-global_log_file = os.path.join(script_dir, "global_metrics.log")
 
 
 def server_fn(context: Context):
@@ -16,11 +15,6 @@ def server_fn(context: Context):
     fraction_fit = context.run_config["fraction-fit"]
     ndarrays = get_weights(UNet())
     parameters = ndarrays_to_parameters(ndarrays)
-
-    with open(global_log_file, "w") as f:
-        f.write(
-            "Round,Training Loss,Training Accuracy,Testing Loss,Testing Accuracy,Testing IoU,Testing DiceCoeff,Testing DiceLoss\n"
-        )
 
     class LoggingFedAvg(FedAvg):
         """Custom FedAvg strategy with logging capabilities."""
@@ -53,11 +47,6 @@ def server_fn(context: Context):
                         f"Testing DiceCoeff: {testing_dice_coeff}, "
                         f"Testing DiceLoss: {testing_dice_loss}"
                     )
-                    with open(global_log_file, "a") as f:
-                        f.write(
-                            f"{rnd},{metrics.get('loss', 'N/A')},{metrics.get('accuracy', 'N/A')},"
-                            f"{testing_loss},{testing_accuracy},{testing_iou},{testing_dice_coeff},{testing_dice_loss}\n"
-                        )
                 return aggregated_result
 
     strategy = LoggingFedAvg(

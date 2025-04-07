@@ -22,13 +22,7 @@ def log_metrics(log_file, message):
 
 def log_metrics_to_csv(csv_file, counter, metrics):
     """Logs metrics to a CSV file with a counter as the x-axis."""
-    if not os.path.exists(csv_file):
-        with open(csv_file, "w") as f:
-            f.write("Counter,Loss,Accuracy,IoU,DiceCoeff,DiceLoss\n")
-    with open(csv_file, "a") as f:
-        f.write(
-            f"{counter},{metrics['loss']:.4f},{metrics['accuracy']:.4f},{metrics['iou']:.4f},{metrics['dice_coeff']:.4f},{metrics['dice_loss']:.4f}\n"
-        )
+    pass  # Remove functionality
 
 
 def plot_metrics(csv_file, output_folder, title_prefix):
@@ -305,7 +299,7 @@ def grid_search_alpha(alpha_values, num_partitions, log_file):
             f.write(f"{alpha},{partition_sizes}\n")
 
 
-def train(net, trainloader, epochs, device, log_file, csv_file):
+def train(net, trainloader, epochs, device, log_file, csv_file, alpha=None):
     """Trains the model using the training dataset."""
     net.to(device)
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
@@ -355,25 +349,14 @@ def train(net, trainloader, epochs, device, log_file, csv_file):
 
         log_metrics(
             log_file,
-            f"Epoch {epoch + 1}/{epochs} - Loss: {avg_loss:.4f}, Accuracy: {avg_accuracy:.4f}, IoU: {avg_iou:.4f}, Dice Coeff: {avg_dice_coeff:.4f}, Dice Loss: {avg_dice_loss:.4f}",
-        )
-        log_metrics_to_csv(
-            csv_file,
-            counter,
-            {
-                "loss": avg_loss,
-                "accuracy": avg_accuracy,
-                "iou": avg_iou,
-                "dice_coeff": avg_dice_coeff,
-                "dice_loss": avg_dice_loss,
-            },
+            f"Alpha: {alpha} | Epoch {epoch + 1}/{epochs} - Loss: {avg_loss:.4f}, Accuracy: {avg_accuracy:.4f}, IoU: {avg_iou:.4f}, Dice Coeff: {avg_dice_coeff:.4f}, Dice Loss: {avg_dice_loss:.4f}",
         )
         counter += 1
 
     return avg_loss
 
 
-def test(net, testloader, device, log_file, csv_file):
+def test(net, testloader, device, log_file, csv_file, alpha=None):
     """Validates the model using the test dataset."""
     net.to(device)
     criterion = torch.nn.BCEWithLogitsLoss()
@@ -412,19 +395,7 @@ def test(net, testloader, device, log_file, csv_file):
 
     log_metrics(
         log_file,
-        f"Testing - Loss: {avg_loss:.4f}, Dice Loss: {avg_dice_loss:.4f}, Accuracy: {avg_accuracy:.4f}, IoU: {avg_iou:.4f}, Dice Coeff: {avg_dice_coeff:.4f}",
-    )
-
-    log_metrics_to_csv(
-        csv_file,
-        counter,
-        {
-            "loss": avg_loss,
-            "accuracy": avg_accuracy,
-            "iou": avg_iou,
-            "dice_coeff": avg_dice_coeff,
-            "dice_loss": avg_dice_loss,
-        },
+        f"Alpha: {alpha} | Testing - Loss: {avg_loss:.4f}, Dice Loss: {avg_dice_loss:.4f}, Accuracy: {avg_accuracy:.4f}, IoU: {avg_iou:.4f}, Dice Coeff: {avg_dice_coeff:.4f}",
     )
     counter += 1
 

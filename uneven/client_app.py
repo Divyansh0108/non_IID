@@ -68,9 +68,7 @@ def generate_segmentation_masks(net, dataloader, device, output_dir, num_samples
 class FlowerClient(NumPyClient):
     """Defines the Flower client for federated learning."""
 
-    def __init__(
-        self, net, trainloader, valloader, local_epochs, log_file, train_csv, test_csv
-    ):
+    def __init__(self, net, trainloader, valloader, local_epochs, log_file, alpha):
         self.net = net
         self.device = torch.device(
             "mps" if torch.backends.mps.is_available() else "cpu"
@@ -79,9 +77,8 @@ class FlowerClient(NumPyClient):
         self.trainloader = trainloader
         self.valloader = valloader
         self.local_epochs = local_epochs
-        self.log_file = log_file
-        self.train_csv = train_csv
-        self.test_csv = test_csv
+        self.log_file = log_file  # Store the log file path
+        self.alpha = alpha  # Store the alpha value
 
     def fit(self, parameters, config):
         """Trains the model locally and returns updated weights."""
@@ -91,8 +88,9 @@ class FlowerClient(NumPyClient):
             self.trainloader,
             self.local_epochs,
             self.device,
-            self.log_file,
-            self.train_csv,
+            self.log_file,  # Pass the log file path
+            None,
+            self.alpha,  # Pass the alpha value
         )
         script_dir = os.path.dirname(os.path.abspath(__file__))
         masks_dir = os.path.join(script_dir, "predicted_masks", "training")
@@ -107,7 +105,12 @@ class FlowerClient(NumPyClient):
         """Evaluates the model locally and returns metrics."""
         set_weights(self.net, parameters)
         loss, dice = test(
-            self.net, self.valloader, self.device, self.log_file, self.test_csv
+            self.net,
+            self.valloader,
+            self.device,
+            self.log_file,  # Pass the log file path
+            None,
+            self.alpha,  # Pass the alpha value
         )
         script_dir = os.path.dirname(os.path.abspath(__file__))
         masks_dir = os.path.join(script_dir, "predicted_masks", "evaluation")
@@ -131,16 +134,14 @@ def client_fn(context: Context):
     # Perform grid search for alpha values
     grid_search_alpha(alpha_values, num_partitions, alpha_log_file)
 
-    # Use the best alpha value (for now, default to 0.5)
-    best_alpha = 0.5
+    # Use the best alpha value (now set to 0.1)
+    best_alpha = 5.0
     trainloader, valloader = load_data(partition_id, num_partitions, alpha=best_alpha)
 
     local_epochs = context.run_config["local-epochs"]
-    log_file = os.path.join(script_dir, "metrics.log")
-    train_csv = os.path.join(script_dir, "training_metrics.csv")
-    test_csv = os.path.join(script_dir, "testing_metrics.csv")
+    log_file = os.path.join(script_dir, "metrics.log")  # Define the log file path
     return FlowerClient(
-        net, trainloader, valloader, local_epochs, log_file, train_csv, test_csv
+        net, trainloader, valloader, local_epochs, log_file, best_alpha
     ).to_client()
 
 
