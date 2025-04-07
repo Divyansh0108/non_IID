@@ -157,7 +157,7 @@ class UNet(nn.Module):
         return self.final_conv(dec4)
 
 
-def partition_data_dirichlet(dataset, num_partitions, alpha, min_samples=2):
+def partition_data_dirichlet(dataset, num_partitions, alpha):
     """Partitions data using Dirichlet distribution for non-IID simulation."""
     n_samples = len(dataset)
     idxs = np.arange(n_samples)
@@ -172,30 +172,7 @@ def partition_data_dirichlet(dataset, num_partitions, alpha, min_samples=2):
         partitions.append(list(idxs[start : start + count]))  # Convert to list
         start += count
 
-    # Handle empty or small partitions
-    for i, partition in enumerate(partitions):
-        if len(partition) < min_samples:
-            print(
-                f"Warning: Partition {i} has less than {min_samples} samples. Redistributing..."
-            )
-            for j, donor_partition in enumerate(partitions):
-                if len(donor_partition) > min_samples:
-                    while (
-                        len(partition) < min_samples
-                        and len(donor_partition) > min_samples
-                    ):
-                        partition.append(donor_partition.pop())
-                    if len(partition) >= min_samples:
-                        break
-
-    # Ensure all partitions meet the minimum size requirement
-    for i, partition in enumerate(partitions):
-        if len(partition) < min_samples:
-            print(
-                f"Error: Partition {i} still has less than {min_samples} samples after redistribution."
-            )
-            raise ValueError("Failed to ensure minimum partition size.")
-
+    # Remove redistribution logic
     return partitions
 
 
@@ -245,24 +222,46 @@ def load_data(partition_id: int, num_partitions: int, alpha: float):
 
     current_partition = partitions[partition_id]
 
-    # Ensure train/test splits are non-empty
-    train_size = int(0.8 * len(current_partition))
-    test_size = len(current_partition) - train_size
-    if train_size == 0 or test_size == 0:
+    # Handle empty partitions - in a real-world scenario, we should skip this client
+    if len(current_partition) == 0:
         print(
-            f"Warning: Partition {partition_id} has insufficient samples for train/test splits."
+            f"Partition {partition_id} has no samples. This client will not participate in training."
         )
-        train_size = max(1, len(current_partition) - 1)
-        test_size = len(current_partition) - train_size
+        # Return empty loaders that can be detected by the client
+        return None, None
 
-    train_dataset, test_dataset = torch.utils.data.random_split(
-        torch.utils.data.Subset(full_dataset, current_partition),
-        [train_size, test_size],
-        generator=torch.Generator().manual_seed(42),
+    # Handle very small partitions with at least 1 sample
+    if len(current_partition) == 1:
+        print(
+            f"Partition {partition_id} has only one sample. Using it for both training and testing."
+        )
+        # Use the same sample for both training and testing
+        train_dataset = torch.utils.data.Subset(full_dataset, current_partition)
+        test_dataset = torch.utils.data.Subset(full_dataset, current_partition)
+    else:
+        # Normal case: split into train/test
+        train_size = max(1, int(0.8 * len(current_partition)))
+        test_size = max(1, len(current_partition) - train_size)
+
+        # Adjust sizes if needed
+        if train_size + test_size > len(current_partition):
+            train_size = len(current_partition) // 2
+            test_size = len(current_partition) - train_size
+
+        train_dataset, test_dataset = torch.utils.data.random_split(
+            torch.utils.data.Subset(full_dataset, current_partition),
+            [train_size, test_size],
+            generator=torch.Generator().manual_seed(42),
+        )
+
+    # Use appropriate batch size for the dataset size
+    batch_size = min(16, max(1, len(train_dataset)))
+    test_batch_size = min(16, max(1, len(test_dataset)))
+
+    trainloader = DataLoader(
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=2
     )
-
-    trainloader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=2)
-    testloader = DataLoader(test_dataset, batch_size=16, num_workers=2)
+    testloader = DataLoader(test_dataset, batch_size=test_batch_size, num_workers=2)
 
     return trainloader, testloader
 

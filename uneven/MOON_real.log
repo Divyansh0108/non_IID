@@ -1,0 +1,51 @@
+[MOON REAL-WORLD GLOBAL METRICS SUMMARY]
+Strategy: FedAvg with MOON (Model-Contrastive Federated Learning) with Real-World Constraints
+Alpha: 0.1
+Rounds Completed: 3
+
+Final Metrics:
+- Loss: 0.6718
+- Accuracy: 0.7626
+- IoU: 0.0000
+- Dice Coefficient: 0.0000
+- Dice Loss: 0.6971
+
+
+[MOON REAL-WORLD GLOBAL METRICS SUMMARY]
+Strategy: FedAvg with MOON (Model-Contrastive Federated Learning) with Real-World Constraints
+Alpha: 0.5
+Rounds Completed: 3
+
+Final Metrics:
+- Loss: 0.6817
+- Accuracy: 0.7308
+- IoU: 0.0000
+- Dice Coefficient: 0.0000
+- Dice Loss: 0.6639
+
+
+[MOON REAL-WORLD GLOBAL METRICS SUMMARY]
+Strategy: FedAvg with MOON (Model-Contrastive Federated Learning) with Real-World Constraints
+Alpha: 1.0
+Rounds Completed: 3
+
+Final Metrics:
+- Loss: 0.6619
+- Accuracy: 0.7195
+- IoU: 0.0000
+- Dice Coefficient: 0.0000
+- Dice Loss: 0.6645
+
+
+[MOON REAL-WORLD GLOBAL METRICS SUMMARY]
+Strategy: FedAvg with MOON (Model-Contrastive Federated Learning) with Real-World Constraints
+Alpha: 5.0
+Rounds Completed: 3
+
+Final Metrics:
+- Loss: 0.7000
+- Accuracy: 0.2542
+- IoU: 0.2677
+- Dice Coefficient: 0.4182
+- Dice Loss: 0.6519
+

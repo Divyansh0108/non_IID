@@ -170,6 +170,22 @@ class FlowerClient(NumPyClient):
         )
 
 
+class NoDataClient(NumPyClient):
+    """A dummy client that reports it can't participate due to insufficient data."""
+
+    def fit(self, parameters, config):
+        """No training, returns unchanged parameters."""
+        print("Client has no data and will not participate in training")
+        # Return unchanged weights with 0 samples processed
+        return parameters, 0, {"status": "no_data"}
+
+    def evaluate(self, parameters, config):
+        """No evaluation, returns default values."""
+        print("Client has no data and will not participate in evaluation")
+        # Return default metrics indicating no evaluation happened
+        return 0.0, 0, {"status": "no_data"}
+
+
 def client_fn(context: Context):
     """Creates and returns a Flower client instance."""
     net = UNet(in_channels=3, out_channels=1)
@@ -183,8 +199,13 @@ def client_fn(context: Context):
     grid_search_alpha(alpha_values, num_partitions, alpha_log_file)
 
     # Use the best alpha value (now set to 5.0)
-    best_alpha = 0.1
+    best_alpha = 5.0
     trainloader, valloader = load_data(partition_id, num_partitions, alpha=best_alpha)
+
+    # If the client has no data, return a dummy client instead of None
+    if trainloader is None or valloader is None:
+        print(f"Client {partition_id} has no data and will use a NoDataClient")
+        return NoDataClient().to_client()
 
     local_epochs = context.run_config["local-epochs"]
     log_file = os.path.join(script_dir, "metrics.log")  # Define the log file path

@@ -117,6 +117,34 @@ def plot_moon_metrics(metrics, output_folder):
     plt.savefig(os.path.join(output_folder, "moon_loss_only.png"))
     plt.close()
 
+    # Add a section describing real-world differences
+    plt.figure(figsize=(10, 6))
+    plt.text(
+        0.5,
+        0.5,
+        "Real-world vs. Simulation Differences:\n\n"
+        "1. Data Redistribution: In this simulation, we redistribute samples\n"
+        "   between partitions to ensure minimum samples. In real-world FL,\n"
+        "   data cannot be moved between clients due to privacy constraints.\n\n"
+        "2. Client Participation: All clients participate in every round here.\n"
+        "   Real systems have dynamic client availability (mobile devices\n"
+        "   might be offline or have low battery).\n\n"
+        "3. Network Conditions: This simulation ignores bandwidth limitations,\n"
+        "   latency, and communication failures common in real FL deployments.\n\n"
+        "4. Heterogeneity: Real-world clients have varying compute capabilities,\n"
+        "   while our simulation assumes homogeneous environments.\n\n"
+        "5. Privacy Mechanisms: Production FL systems implement secure\n"
+        "   aggregation and differential privacy, which we don't include here.",
+        ha="center",
+        va="center",
+        fontsize=12,
+        bbox=dict(boxstyle="round,pad=1", fc="white", ec="gray", alpha=0.9),
+    )
+    plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_folder, "real_world_differences.png"))
+    plt.close()
+
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
