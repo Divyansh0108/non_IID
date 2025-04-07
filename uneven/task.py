@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.transforms import Compose
@@ -299,13 +300,70 @@ def grid_search_alpha(alpha_values, num_partitions, log_file):
             f.write(f"{alpha},{partition_sizes}\n")
 
 
-def train(net, trainloader, epochs, device, log_file, csv_file, alpha=None):
+def moon_loss(
+    current_model_outputs,
+    global_model_outputs,
+    prev_model_outputs,
+    temperature=0.5,
+    mu=1.0,
+):
+    """
+    Compute MOON (Model-cOntrastive federatedlearNing) loss.
+
+    Args:
+        current_model_outputs: Representation from current local model
+        global_model_outputs: Representation from global model (previous round)
+        prev_model_outputs: Representation from local model in previous round
+        temperature: Temperature parameter for contrastive loss
+        mu: Weight for the contrastive loss term
+
+    Returns:
+        MOON contrastive loss value
+    """
+    current_model_outputs = F.normalize(current_model_outputs, dim=1)
+    global_model_outputs = F.normalize(global_model_outputs, dim=1)
+    prev_model_outputs = F.normalize(prev_model_outputs, dim=1)
+
+    pos_sim = F.cosine_similarity(current_model_outputs, global_model_outputs, dim=1)
+    neg_sim = F.cosine_similarity(current_model_outputs, prev_model_outputs, dim=1)
+
+    logits = torch.cat([pos_sim.unsqueeze(1), neg_sim.unsqueeze(1)], dim=1)
+    logits /= temperature
+
+    labels = torch.zeros(logits.shape[0], dtype=torch.long, device=logits.device)
+    contrastive_loss = F.cross_entropy(logits, labels)
+
+    return mu * contrastive_loss
+
+
+def train(
+    net,
+    trainloader,
+    epochs,
+    device,
+    log_file,
+    csv_file,
+    alpha=None,
+    use_moon=False,
+    moon_mu=1.0,
+    prev_model=None,
+    global_model=None,
+):
     """Trains the model using the training dataset."""
     net.to(device)
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     criterion = torch.nn.BCEWithLogitsLoss().to(device)
     optimizer = torch.optim.Adam(net.parameters(), lr=0.0005)
     net.train()
+
+    # Create copies of previous model states if MOON is enabled
+    if use_moon and prev_model is None:
+        prev_model = UNet(in_channels=3, out_channels=1).to(device)
+        prev_model.load_state_dict(net.state_dict())
+
+    if use_moon and global_model is None:
+        global_model = UNet(in_channels=3, out_channels=1).to(device)
+        global_model.load_state_dict(net.state_dict())
 
     counter = 0
     for epoch in range(epochs):
@@ -315,7 +373,9 @@ def train(net, trainloader, epochs, device, log_file, csv_file, alpha=None):
             running_iou,
             running_dice_coeff,
             running_dice_loss,
+            running_moon_loss,
         ) = (
+            0.0,
             0.0,
             0.0,
             0.0,
@@ -328,7 +388,29 @@ def train(net, trainloader, epochs, device, log_file, csv_file, alpha=None):
 
             optimizer.zero_grad()
             outputs = net(images)
-            loss = criterion(outputs, masks)
+
+            # Standard segmentation loss
+            task_loss = criterion(outputs, masks)
+
+            # MOON loss for model contrastive learning
+            moon_loss_value = 0.0
+            if use_moon and prev_model is not None and global_model is not None:
+                with torch.no_grad():
+                    prev_outputs = prev_model(images)
+                    global_outputs = global_model(images)
+
+                # Using intermediate feature maps for contrastive learning
+                # Using bottleneck features as representation for contrastive learning
+                moon_loss_value = moon_loss(
+                    outputs.view(outputs.size(0), -1),
+                    global_outputs.view(global_outputs.size(0), -1),
+                    prev_outputs.view(prev_outputs.size(0), -1),
+                    mu=moon_mu,
+                )
+                running_moon_loss += moon_loss_value.item()
+
+            # Combined loss
+            loss = task_loss + moon_loss_value if use_moon else task_loss
             loss.backward()
             optimizer.step()
 
@@ -346,14 +428,22 @@ def train(net, trainloader, epochs, device, log_file, csv_file, alpha=None):
         avg_iou = running_iou / len(trainloader)
         avg_dice_coeff = running_dice_coeff / len(trainloader)
         avg_dice_loss = running_dice_loss / len(trainloader)
+        avg_moon_loss = running_moon_loss / len(trainloader) if use_moon else 0.0
 
+        moon_info = f", MOON Loss: {avg_moon_loss:.4f}" if use_moon else ""
         log_metrics(
             log_file,
-            f"Alpha: {alpha} | Epoch {epoch + 1}/{epochs} - Loss: {avg_loss:.4f}, Accuracy: {avg_accuracy:.4f}, IoU: {avg_iou:.4f}, Dice Coeff: {avg_dice_coeff:.4f}, Dice Loss: {avg_dice_loss:.4f}",
+            f"Alpha: {alpha} | Epoch {epoch + 1}/{epochs} - Loss: {avg_loss:.4f}, "
+            f"Accuracy: {avg_accuracy:.4f}, IoU: {avg_iou:.4f}, "
+            f"Dice Coeff: {avg_dice_coeff:.4f}, Dice Loss: {avg_dice_loss:.4f}{moon_info}",
         )
         counter += 1
 
-    return avg_loss
+    # Update previous model for next round if MOON is enabled
+    if use_moon and prev_model is not None:
+        prev_model.load_state_dict(net.state_dict())
+
+    return avg_loss, avg_moon_loss if use_moon else 0.0
 
 
 def test(net, testloader, device, log_file, csv_file, alpha=None):

@@ -1,0 +1,54 @@
+[MOON GLOBAL METRICS SUMMARY]
+Strategy: FedAvg with MOON (Model-Contrastive Federated Learning)
+Alpha: 5.0
+Rounds Completed: 3
+
+Final Metrics:
+- Loss: 0.2050
+- Accuracy: 0.9151
+- IoU: 0.7739
+- Dice Coefficient: 0.8715
+- Dice Loss: 0.2558
+- MOON Loss: 0.1798
+
+
+[MOON GLOBAL METRICS SUMMARY]
+Strategy: FedAvg with MOON (Model-Contrastive Federated Learning)
+Alpha: 1.0
+Rounds Completed: 3
+
+Final Metrics:
+- Loss: 0.4530
+- Accuracy: 0.8085
+- IoU: 0.5870
+- Dice Coefficient: 0.7368
+- Dice Loss: 0.4113
+- MOON Loss: 0.1636
+
+
+[MOON GLOBAL METRICS SUMMARY]
+Strategy: FedAvg with MOON (Model-Contrastive Federated Learning)
+Alpha: 0.5
+Rounds Completed: 3
+
+Final Metrics:
+- Loss: 0.2572
+- Accuracy: 0.9089
+- IoU: 0.7534
+- Dice Coefficient: 0.8528
+- Dice Loss: 0.3296
+- MOON Loss: 0.0984
+
+
+[MOON GLOBAL METRICS SUMMARY]
+Strategy: FedAvg with MOON (Model-Contrastive Federated Learning)
+Alpha: 0.1
+Rounds Completed: 3
+
+Final Metrics:
+- Loss: 0.6959
+- Accuracy: 0.3568
+- IoU: 0.1995
+- Dice Coefficient: 0.3312
+- Dice Loss: 0.6486
+- MOON Loss: 0.1288

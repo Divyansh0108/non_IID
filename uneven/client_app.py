@@ -48,10 +48,13 @@ def generate_segmentation_masks(net, dataloader, device, output_dir, num_samples
         img = images[i].cpu()
         true_mask = masks[i].cpu()
         pred_mask = pred_masks[i].cpu()
+        # Denormalize the image
         img = img * torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1) + torch.tensor(
             [0.485, 0.456, 0.406]
         ).view(3, 1, 1)
         img = torch.clamp(img, 0, 1)
+
+        # Display images and masks
         axes[i, 0].imshow(img.permute(1, 2, 0))
         axes[i, 0].axis("off")
         axes[i, 1].imshow(true_mask.squeeze(), cmap="gray")
@@ -68,7 +71,17 @@ def generate_segmentation_masks(net, dataloader, device, output_dir, num_samples
 class FlowerClient(NumPyClient):
     """Defines the Flower client for federated learning."""
 
-    def __init__(self, net, trainloader, valloader, local_epochs, log_file, alpha):
+    def __init__(
+        self,
+        net,
+        trainloader,
+        valloader,
+        local_epochs,
+        log_file,
+        alpha,
+        use_moon=True,
+        moon_mu=1.0,
+    ):
         self.net = net
         self.device = torch.device(
             "mps" if torch.backends.mps.is_available() else "cpu"
@@ -80,25 +93,60 @@ class FlowerClient(NumPyClient):
         self.log_file = log_file  # Store the log file path
         self.alpha = alpha  # Store the alpha value
 
+        # MOON related parameters
+        self.use_moon = use_moon
+        self.moon_mu = moon_mu
+
+        # Models for MOON implementation
+        self.prev_model = None
+        self.global_model = None
+
+        if self.use_moon:
+            self.prev_model = UNet(in_channels=3, out_channels=1).to(self.device)
+            self.prev_model.load_state_dict(self.net.state_dict())
+            self.global_model = UNet(in_channels=3, out_channels=1).to(self.device)
+            self.global_model.load_state_dict(self.net.state_dict())
+
     def fit(self, parameters, config):
         """Trains the model locally and returns updated weights."""
+        # Update global model with the latest global parameters
         set_weights(self.net, parameters)
-        train_loss = train(
+
+        if self.use_moon:
+            # The current global model becomes the reference for this round
+            self.global_model.load_state_dict(self.net.state_dict())
+
+        # Train with MOON loss if enabled
+        train_loss, moon_loss_value = train(
             self.net,
             self.trainloader,
             self.local_epochs,
             self.device,
-            self.log_file,  # Pass the log file path
+            self.log_file,
             None,
-            self.alpha,  # Pass the alpha value
+            self.alpha,
+            self.use_moon,
+            self.moon_mu,
+            self.prev_model,
+            self.global_model,
         )
+
+        # Save current model as previous model for next round
+        if self.use_moon:
+            self.prev_model.load_state_dict(self.net.state_dict())
+
         script_dir = os.path.dirname(os.path.abspath(__file__))
         masks_dir = os.path.join(script_dir, "predicted_masks", "training")
         generate_segmentation_masks(self.net, self.trainloader, self.device, masks_dir)
+
+        metrics = {"train_loss": float(train_loss), "using_moon": self.use_moon}
+        if self.use_moon:
+            metrics["moon_loss"] = float(moon_loss_value)
+
         return (
             get_weights(self.net),
             len(self.trainloader.dataset),
-            {"train_loss": float(train_loss)},
+            metrics,
         )
 
     def evaluate(self, parameters, config):
@@ -108,9 +156,9 @@ class FlowerClient(NumPyClient):
             self.net,
             self.valloader,
             self.device,
-            self.log_file,  # Pass the log file path
+            self.log_file,
             None,
-            self.alpha,  # Pass the alpha value
+            self.alpha,
         )
         script_dir = os.path.dirname(os.path.abspath(__file__))
         masks_dir = os.path.join(script_dir, "predicted_masks", "evaluation")
@@ -118,7 +166,7 @@ class FlowerClient(NumPyClient):
         return (
             float(loss),
             len(self.valloader.dataset),
-            {"dice": float(dice)},
+            {"dice": float(dice), "using_moon": self.use_moon},
         )
 
 
@@ -134,14 +182,26 @@ def client_fn(context: Context):
     # Perform grid search for alpha values
     grid_search_alpha(alpha_values, num_partitions, alpha_log_file)
 
-    # Use the best alpha value (now set to 0.1)
-    best_alpha = 5.0
+    # Use the best alpha value (now set to 5.0)
+    best_alpha = 0.1
     trainloader, valloader = load_data(partition_id, num_partitions, alpha=best_alpha)
 
     local_epochs = context.run_config["local-epochs"]
     log_file = os.path.join(script_dir, "metrics.log")  # Define the log file path
+
+    # Get MOON configuration from context if available
+    use_moon = context.run_config.get("use-moon", True)  # Default to True
+    moon_mu = context.run_config.get("moon-mu", 1.0)  # Default mu value
+
     return FlowerClient(
-        net, trainloader, valloader, local_epochs, log_file, best_alpha
+        net,
+        trainloader,
+        valloader,
+        local_epochs,
+        log_file,
+        best_alpha,
+        use_moon,
+        moon_mu,
     ).to_client()
 
 

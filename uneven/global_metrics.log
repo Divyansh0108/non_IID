@@ -10,29 +10,6 @@ Final Metrics:
 - Dice Coefficient: 0.9045
 - Dice Loss: 0.1464
 
-[DETAILS]
-Round 1:
-- Loss: 0.1977
-- Accuracy: 0.9239
-- IoU: 0.8263
-- Dice Coefficient: 0.9048
-- Dice Loss: 0.1655
-
-Round 2:
-- Loss: 0.1932
-- Accuracy: 0.9406
-- IoU: 0.9124
-- Dice Coefficient: 0.9542
-- Dice Loss: 0.1475
-
-Round 3:
-- Loss: 0.1296
-- Accuracy: 0.9672
-- IoU: 0.8273
-- Dice Coefficient: 0.9045
-- Dice Loss: 0.1464
-
-
 
 
 
@@ -47,30 +24,6 @@ Final Metrics:
 - IoU: 0.8512
 - Dice Coefficient: 0.9191
 - Dice Loss: 0.1478
-
-[DETAILS]
-Round 1:
-- Loss: 0.3678
-- Accuracy: 0.8357
-- IoU: 0.4340
-- Dice Coefficient: 0.6014
-- Dice Loss: 0.4964
-
-Round 2:
-- Loss: 0.1871
-- Accuracy: 0.9164
-- IoU: 0.7872
-- Dice Coefficient: 0.8798
-- Dice Loss: 0.2171
-
-Round 3:
-- Loss: 0.1471
-- Accuracy: 0.9407
-- IoU: 0.8512
-- Dice Coefficient: 0.9191
-- Dice Loss: 0.1478
-
-
 
 
 
@@ -88,29 +41,6 @@ Final Metrics:
 - Dice Coefficient: 0.9069
 - Dice Loss: 0.1684
 
-[DETAILS]
-Round 1:
-- Loss: 0.3179
-- Accuracy: 0.8926
-- IoU: 0.6501
-- Dice Coefficient: 0.7863
-- Dice Loss: 0.4208
-
-Round 2:
-- Loss: 0.1952
-- Accuracy: 0.9274
-- IoU: 0.7953
-- Dice Coefficient: 0.8851
-- Dice Loss: 0.2311
-
-Round 3:
-- Loss: 0.1406
-- Accuracy: 0.9344
-- IoU: 0.8310
-- Dice Coefficient: 0.9069
-- Dice Loss: 0.1684
-
-
 
 
 
@@ -126,28 +56,4 @@ Final Metrics:
 - IoU: 0.7954
 - Dice Coefficient: 0.8848
 - Dice Loss: 0.2337
-
-[DETAILS]
-Round 1:
-- Loss: 0.3392
-- Accuracy: 0.8759
-- IoU: 0.5987
-- Dice Coefficient: 0.7433
-- Dice Loss: 0.4550
-
-Round 2:
-- Loss: 0.2354
-- Accuracy: 0.9111
-- IoU: 0.7505
-- Dice Coefficient: 0.8567
-- Dice Loss: 0.2877
-
-Round 3:
-- Loss: 0.1948
-- Accuracy: 0.9264
-- IoU: 0.7954
-- Dice Coefficient: 0.8848
-- Dice Loss: 0.2337
-
-
 
